@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build / publish artifacts
+*.tgz
+
+# Local scratch
+.debug/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store

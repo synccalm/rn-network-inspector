@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SyncCalm</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/icon.svg" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand">
+          <img src="/assets/icon.svg" alt="SyncCalm" />
+          <div class="brand-text">
+            <div class="brand-sub">React Native</div>
+            <div class="brand-title">SyncCalm</div>
+          </div>
+        </div>
+
+        <nav class="primary-nav" id="primary-nav">
+          <button class="primary-tab active" data-view="network">Network</button>
+          <button class="primary-tab" data-view="logs">Logs</button>
+        </nav>
+
+        <div class="header-right">
+          <span class="session-badge" id="session-badge">session …</span>
+          <span class="conn-status" id="conn-status">
+            <span class="conn-dot"></span>
+            <span id="conn-status-label">connecting…</span>
+          </span>
+          <button class="btn btn-danger" id="clear-btn" title="Wipe this session's captured logs">
+            Clear
+          </button>
+        </div>
+      </header>
+
+      <div class="main-layout" id="view-network">
+        <aside class="sidebar">
+          <div class="sidebar-tabs">
+            <button class="tab active" data-mode="all">All requests</button>
+            <button class="tab" data-mode="endpoints">Graph</button>
+          </div>
+          <div class="sidebar-search">
+            <input type="text" id="search-input" placeholder="Filter by URL…" />
+          </div>
+          <div class="request-list" id="request-list"></div>
+          <div class="endpoint-list" id="endpoint-list" style="display: none"></div>
+        </aside>
+
+        <main class="detail-panel" id="detail-panel">
+          <div class="empty-state" id="empty-state">
+            <img src="/assets/icon.svg" alt="" />
+            <div>Waiting for requests…</div>
+            <div class="mono" style="font-size: 11px; color: var(--text-faint)">
+              Call <code>SyncCalm.init()</code> in your app to start capturing
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <div class="main-layout view-hidden" id="view-logs">
+        <aside class="sidebar">
+          <div class="sidebar-search">
+            <input type="text" id="logs-search-input" placeholder="Filter logs…" />
+          </div>
+          <div class="request-list" id="logs-list"></div>
+        </aside>
+
+        <main class="detail-panel" id="logs-detail-panel">
+          <div class="empty-state" id="logs-empty-state">
+            <img src="/assets/icon.svg" alt="" />
+            <div>Waiting for logs…</div>
+            <div class="mono" style="font-size: 11px; color: var(--text-faint)">
+              console.log/info/warn/error/debug calls show up here automatically
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module" src="/assets/app.js"></script>
+  </body>
+</html>

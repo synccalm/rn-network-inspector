@@ -1,0 +1,72 @@
+{
+  "name": "@synccalm/rn-network-inspector",
+  "version": "1.0.0",
+  "description": "React Native network inspector — see every fetch and XHR your app makes in a live browser dashboard, diff repeated API calls like git, and let Claude query the traffic over MCP.",
+  "license": "MIT",
+  "main": "src/sdk/index.js",
+  "types": "src/sdk/index.d.ts",
+  "bin": {
+    "rn-network-inspector": "bin/synccalm.js",
+    "synccalm": "bin/synccalm.js",
+    "synccalm-mcp": "bin/mcp-server.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/synccalm.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "react-native",
+    "network-inspector",
+    "network",
+    "inspector",
+    "debugging",
+    "devtools",
+    "api-debugging",
+    "http",
+    "fetch",
+    "xhr",
+    "axios",
+    "json",
+    "diff",
+    "dashboard",
+    "logger",
+    "expo",
+    "metro",
+    "mcp",
+    "model-context-protocol",
+    "claude"
+  ],
+  "peerDependencies": {
+    "react-native": ">=0.60.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ws": "^8.17.0",
+    "zod": "^4.0.0"
+  },
+  "author": "json-formatter.co.in",
+  "homepage": "https://json-formatter.co.in/synccalm",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/synccalm/synccalm-rn.git"
+  },
+  "bugs": {
+    "url": "https://github.com/synccalm/synccalm-rn/issues"
+  }
+}
