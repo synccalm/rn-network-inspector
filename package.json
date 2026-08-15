@@ -1,6 +1,6 @@
 {
   "name": "@synccalm/rn-network-inspector",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.0",
   "description": "React Native network inspector — see every fetch and XHR your app makes in a live browser dashboard, diff repeated API calls like git, and let Claude query the traffic over MCP.",
   "license": "MIT",
   "main": "src/sdk/index.js",
