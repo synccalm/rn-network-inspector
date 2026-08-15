@@ -1,6 +1,6 @@
 <div align="center">
 
-# SyncCalm
+# SyncCalm Network Inspector
 
 **See every network request your React Native app makes — live, in your browser.**
 
@@ -25,15 +25,15 @@ Debugging API calls in React Native usually means `console.log(JSON.stringify(re
 squinting at a wall of unformatted text in Metro, and scrolling back to compare it
 with the last response by eye.
 
-SyncCalm gives you the network tab you already know from the browser — plus the
+SyncCalm Network Inspector gives you the network tab you already know from the browser — plus the
 thing browsers don't have: **the same endpoint's responses, diffed against each
 other**, so "why did this work a minute ago?" takes seconds instead of a rebuild.
 
+- 🔀 **Compare mode** — diff any two hits of an endpoint; additions green, removals red, changes yellow.
+- 🤖 **Ask Claude via MCP** — question your captured traffic in plain English, no copy-pasting JSON. [Jump to setup ↓](#-claude-integration-mcp)
 - 🔌 **Zero config** — one `init()` call, one CLI command. No native modules, no linking, no `pod install`.
 - 📡 **Real time** — requests appear as they happen, over WebSocket.
 - 🌲 **JSON tree** — expand, collapse, syntax highlight, copy any node.
-- 🔀 **Compare mode** — diff any two hits of an endpoint; additions green, removals red, changes yellow.
-- 🤖 **Claude via MCP** — ask questions about your traffic in plain English. [Jump to setup ↓](#-claude-integration-mcp)
 - 📦 **Dev only** — a no-op when `__DEV__` is false, so it can't ship to production.
 
 > **Scope:** v1 is a local development tool — no auth, no cloud, no persistence.
@@ -128,7 +128,7 @@ that machine depends on where your app runs:
 
 ## 🤖 Claude integration (MCP)
 
-SyncCalm ships a second binary, `synccalm-mcp` — an
+SyncCalm Network Inspector ships a second binary, `synccalm-mcp` — an
 [MCP](https://modelcontextprotocol.io) server that lets **Claude Code or Claude
 Desktop query your captured traffic directly**. No copy-pasting JSON into a chat
 window: Claude reads the real requests and responses, and can diff repeated calls
@@ -303,7 +303,7 @@ Nothing to link, nothing to rebuild.
 Yes, on any Expo setup where you control the JS entry point.
 
 **How is this different from Flipper or Reactotron?**
-Those are broad, general-purpose debuggers. SyncCalm does one thing: network traffic,
+Those are broad, general-purpose debuggers. SyncCalm Network Inspector does one thing: network traffic,
 with response diffing across repeated calls and a Claude/MCP interface. It's also
 far lighter — no desktop app, no native setup.
 
@@ -336,8 +336,8 @@ v1 is deliberately small:
 ## Contributing
 
 Issues and PRs are welcome at
-[github.com/synccalm/synccalm-rn](https://github.com/synccalm/synccalm-rn).
+[github.com/synccalm/rn-network-inspector](https://github.com/synccalm/rn-network-inspector).
 
 ## License
 
-MIT © [json-formatter.co.in](https://json-formatter.co.in)
+This project is licensed under the terms of the [MIT license](LICENSE).

@@ -64,9 +64,9 @@
   "homepage": "https://json-formatter.co.in/synccalm",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/synccalm/synccalm-rn.git"
+    "url": "git+https://github.com/synccalm/rn-network-inspector.git"
   },
   "bugs": {
-    "url": "https://github.com/synccalm/synccalm-rn/issues"
+    "url": "https://github.com/synccalm/rn-network-inspector/issues"
   }
 }
