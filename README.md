@@ -11,9 +11,9 @@ local dashboard, with a collapsible JSON viewer and **git-style diffing** across
 repeated calls to the same endpoint. Ships with an **MCP server** so Claude can
 read your captured traffic directly.
 
-[![npm](https://img.shields.io/npm/v/@synccalm/rn-network-inspector.svg)](https://www.npmjs.com/package/@synccalm/rn-network-inspector)
-[![license](https://img.shields.io/npm/l/@synccalm/rn-network-inspector.svg)](./LICENSE)
-[![node](https://img.shields.io/node/v/@synccalm/rn-network-inspector.svg)](https://nodejs.org)
+[![npm](https://img.shields.io/npm/v/@synccalm/rn-network-inspector)](https://www.npmjs.com/package/@synccalm/rn-network-inspector)
+[![license](https://img.shields.io/npm/l/@synccalm/rn-network-inspector)](./LICENSE)
+[![node](https://img.shields.io/node/v/@synccalm/rn-network-inspector)](https://nodejs.org)
 
 </div>
 
