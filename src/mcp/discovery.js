@@ -18,6 +18,8 @@
 
 const http = require('http');
 
+const runtimeFile = require('../server/runtime-file');
+
 const HOST = process.env.SYNCCALM_HOST || 'localhost';
 const EXPLICIT_PORT = process.env.SYNCCALM_PORT ? parseInt(process.env.SYNCCALM_PORT, 10) : null;
 const SCAN_START_PORT = 4040;
@@ -25,10 +27,28 @@ const SCAN_MAX_ATTEMPTS = 50;
 const REQUEST_TIMEOUT_MS = 300;
 
 let cachedPort = EXPLICIT_PORT || null;
+// Tokens for collectors we've already resolved, keyed by port.
+const tokens = new Map();
 
-function httpGetJson(port, path) {
+/**
+ * Reads a collector's token from its 0600 runtime file. Reads are now
+ * authenticated, so blind port-scanning no longer identifies a collector —
+ * the file is what tells us both where one is and how to talk to it.
+ * `SYNCCALM_TOKEN` overrides, for unusual setups.
+ */
+function tokenFor(port) {
+  if (process.env.SYNCCALM_TOKEN) return process.env.SYNCCALM_TOKEN;
+  if (tokens.has(port)) return tokens.get(port);
+  const state = runtimeFile.read(port);
+  const token = state ? state.token : null;
+  if (token) tokens.set(port, token);
+  return token;
+}
+
+function httpGetJson(port, path, token) {
   return new Promise((resolve, reject) => {
-    const req = http.get({ host: HOST, port, path, timeout: REQUEST_TIMEOUT_MS }, (res) => {
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const req = http.get({ host: HOST, port, path, headers, timeout: REQUEST_TIMEOUT_MS }, (res) => {
       let data = '';
       res.on('data', (chunk) => {
         data += chunk;
@@ -50,10 +70,11 @@ function httpGetJson(port, path) {
   });
 }
 
-function httpPost(port, path) {
+function httpPost(port, path, token) {
   return new Promise((resolve, reject) => {
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const req = http.request(
-      { host: HOST, port, path, method: 'POST', timeout: REQUEST_TIMEOUT_MS },
+      { host: HOST, port, path, method: 'POST', headers, timeout: REQUEST_TIMEOUT_MS },
       (res) => {
         res.on('data', () => {});
         res.on('end', () => resolve(res.statusCode));
@@ -66,21 +87,31 @@ function httpPost(port, path) {
 }
 
 async function pingPort(port) {
+  const token = tokenFor(port);
+  if (!token) return null; // no local record of a collector here
   try {
-    const session = await httpGetJson(port, '/api/session');
+    const session = await httpGetJson(port, '/api/session', token);
     if (session && typeof session.sessionId === 'string') return session;
   } catch (e) {
-    // nothing (or nothing recognizable as synccalm) is listening here
+    tokens.delete(port); // stale token, or nothing listening
   }
   return null;
 }
 
+/**
+ * Candidate ports, preferring collectors this user actually has recorded.
+ * The port range is still swept as a fallback so a collector whose runtime
+ * file was cleaned up (a tmp sweep, say) is found when SYNCCALM_TOKEN is set.
+ */
 async function scanRange(startPort, count) {
-  const attempts = [];
-  for (let port = startPort; port < startPort + count; port++) {
-    attempts.push(pingPort(port).then((session) => (session ? { port, session } : null)));
-  }
-  const results = await Promise.all(attempts);
+  const recorded = runtimeFile.readAll().map((s) => s.port);
+  const swept = [];
+  for (let port = startPort; port < startPort + count; port++) swept.push(port);
+  const candidates = [...new Set([...recorded, ...swept])];
+
+  const results = await Promise.all(
+    candidates.map((port) => pingPort(port).then((session) => (session ? { port, session } : null)))
+  );
   return results.find(Boolean) || null;
 }
 
@@ -132,11 +163,12 @@ function startEmbeddedServer() {
     embeddedStartPromise = (async () => {
       // Required lazily so merely importing this module doesn't pull in ws.
       const { startServer } = require('../server');
-      const { port, url } = await startServer({
+      const { port, url, token } = await startServer({
         startPort: EXPLICIT_PORT || SCAN_START_PORT,
         open: false,
       });
       cachedPort = port;
+      tokens.set(port, token);
       // stdout belongs to the JSON-RPC framing — stderr is the only safe
       // channel, and is what MCP clients surface in their logs.
       process.stderr.write(
@@ -184,7 +216,7 @@ async function discoverServer() {
 
 async function clearServer() {
   const { port } = await discoverServer();
-  await httpPost(port, '/api/clear');
+  await httpPost(port, '/api/clear', tokenFor(port));
 }
 
 module.exports = { discoverServer, clearServer };

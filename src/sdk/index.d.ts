@@ -16,6 +16,39 @@ export interface SyncCalmOptions {
   logToConsole?: boolean;
   /** Capture console.log/info/warn/error/debug calls for the Logs tab. Defaults to true. */
   captureConsole?: boolean;
+  /**
+   * Scrub credentials before anything leaves the device. Defaults to true.
+   *
+   * Covers common auth headers (Authorization, Cookie, Set-Cookie, X-API-Key…)
+   * and sensitive JSON body keys (password, token, secret, ssn, cvv…), matched
+   * case-insensitively and ignoring `-`/`_`. Set to false only when you're
+   * certain the traffic carries nothing sensitive.
+   */
+  redact?: boolean;
+  /** Extra header names to redact, added to the defaults. */
+  redactHeaders?: string[];
+  /** Extra JSON body keys to redact, added to the defaults. */
+  redactBodyKeys?: string[];
+  /**
+   * Final say over each captured request, applied after the built-in
+   * redaction. Return a modified entry, or a falsy value to drop it entirely.
+   */
+  redactor?: (entry: CapturedRequest) => CapturedRequest | null | undefined | false;
+}
+
+export interface CapturedRequest {
+  method: string;
+  url: string;
+  requestHeaders: Record<string, string>;
+  requestBody: unknown;
+  status: number;
+  statusText: string;
+  responseHeaders: Record<string, string>;
+  responseBody: unknown;
+  startTime: number;
+  endTime: number;
+  duration: number;
+  error: string | null;
 }
 
 export interface SyncCalmSDK {

@@ -2,9 +2,10 @@
 'use strict';
 
 const { startServer } = require('../src/server');
+const { isLoopbackHost } = require('../src/server/auth');
 
 function parseArgs(argv) {
-  const args = { command: 'start', port: 4040, open: true, help: false };
+  const args = { command: 'start', port: 4040, host: '127.0.0.1', open: true, help: false };
   const rest = argv.slice(2);
 
   if (rest[0] && !rest[0].startsWith('-')) {
@@ -17,6 +18,10 @@ function parseArgs(argv) {
     if (arg === '--port' || arg === '-p') {
       const value = parseInt(rest[i + 1], 10);
       if (!Number.isNaN(value)) args.port = value;
+      i++;
+    } else if (arg === '--host') {
+      const value = rest[i + 1];
+      if (value && !value.startsWith('-')) args.host = value;
       i++;
     } else if (arg === '--no-open') {
       args.open = false;
@@ -36,8 +41,29 @@ function printHelp() {
     npx synccalm [start]      Start the local server and open the dashboard
     npx synccalm --port 4050  Start searching for an open port from 4050
     npx synccalm --no-open    Don't auto-open the browser
+    npx synccalm --host <ip>  Bind beyond loopback (see below)
     npx synccalm --help       Show this help message
+
+  Network exposure
+    The capture holds whatever your app sent — auth headers, cookies, user
+    data — so the server binds to 127.0.0.1 and every read requires the
+    session token printed at startup.
+
+    Simulators and emulators reach loopback already, so the default works.
+    Testing on a physical device needs --host 0.0.0.0, which publishes the
+    port to your whole network; prefer 'adb reverse tcp:4040 tcp:4040' or
+    an SSH tunnel instead where you can.
 `);
+}
+
+function warnAboutExposure(host, port) {
+  console.log('');
+  console.log('  ⚠  Bound to a network interface, not just this machine.');
+  console.log(`     Anything that can reach ${host}:${port} can attempt to read the capture,`);
+  console.log('     which may include auth headers and user data. The session token is');
+  console.log('     still required, so keep the dashboard URL private.');
+  console.log('');
+  console.log("     Safer for physical devices:  adb reverse tcp:" + port + " tcp:" + port);
 }
 
 async function main() {
@@ -56,13 +82,24 @@ async function main() {
   }
 
   try {
-    const { port, sessionId, url } = await startServer({ startPort: args.port, open: args.open });
+    const { port, sessionId, url } = await startServer({
+      startPort: args.port,
+      host: args.host,
+      open: args.open,
+    });
 
     console.log('');
     console.log('  ✓ synccalm is running');
     console.log('');
     console.log(`    Dashboard   ${url}`);
     console.log(`    Session     ${sessionId}`);
+    console.log(`    Bound to    ${args.host}${isLoopbackHost(args.host) ? ' (this machine only)' : ''}`);
+    console.log('');
+    console.log('  The dashboard URL carries the session token needed to read the');
+    console.log('  capture — treat it like a password.');
+
+    if (!isLoopbackHost(args.host)) warnAboutExposure(args.host, port);
+
     console.log('');
     console.log('  In your app entry point (dev only):');
     console.log('');

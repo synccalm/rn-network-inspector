@@ -103,10 +103,15 @@ that machine depends on where your app runs:
 | --- | --- |
 | **iOS Simulator** | Nothing — `localhost` already works |
 | **Android Emulator** | Nothing — auto-detected via `10.0.2.2` |
-| **Physical device** (same Wi-Fi) | Pass your machine's LAN IP: `SyncCalm.init({ host: '192.168.1.23' })` |
+| **Physical device** (same Wi-Fi) | Forward the port — `adb reverse tcp:4040 tcp:4040` — and change nothing else. Failing that, start with `npx synccalm --host 0.0.0.0` and pass your LAN IP: `SyncCalm.init({ host: '192.168.1.23' })` |
 | **Non-default port** | `SyncCalm.init({ port: 4041 })` — match whatever `npx synccalm` printed |
 
 > Find your LAN IP with `ipconfig getifaddr en0` on macOS, or `hostname -I` on Linux.
+
+The server binds to `127.0.0.1` by default, so simulators and emulators work
+out of the box while nothing is exposed to your network. `adb reverse` keeps
+that true for physical Android devices; `--host 0.0.0.0` is the fallback and
+publishes the port to everyone on your Wi-Fi. See [Security](#security).
 
 ---
 
@@ -225,6 +230,11 @@ SyncCalm.init(options?: {
   maxBodyLength?: number;   // default: 200000 — longer bodies are truncated
   logToConsole?: boolean;   // default: false — also mirror captures to the Metro console
   captureConsole?: boolean; // default: true — capture console.* for the Logs tab
+
+  redact?: boolean;         // default: true — scrub credentials before sending
+  redactHeaders?: string[]; // extra header names to redact
+  redactBodyKeys?: string[];// extra JSON body keys to redact
+  redactor?: (entry) => entry | null;  // final say; return null to drop the entry
 });
 ```
 
@@ -236,6 +246,7 @@ TypeScript types ship with the package — no `@types` install needed.
 npx synccalm                 # start the server and open the dashboard
 npx synccalm --port 5000     # start searching for a free port from 5000
 npx synccalm --no-open       # don't open a browser
+npx synccalm --host 0.0.0.0  # bind beyond loopback (exposes the capture — see Security)
 npx synccalm --help          # show help
 ```
 
@@ -332,6 +343,45 @@ v1 is deliberately small:
 
 - Node.js 16 or newer
 - React Native 0.60+ (peer dependency, optional — the CLI and MCP server run standalone)
+
+## Security
+
+A capture of your app's traffic is, in practice, a capture of its credentials —
+`Authorization` headers, session cookies, whatever the user typed into a login
+form. SyncCalm treats it that way.
+
+**Secrets are scrubbed in the app, before anything is sent.** Common auth
+headers (`Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`…) and sensitive
+JSON keys (`password`, `token`, `secret`, `ssn`, `cvv`…) are replaced with
+`[REDACTED by synccalm]`. Matching ignores case, `-` and `_`, so `access_token`,
+`accessToken` and `Access-Token` are all caught. Extend it with `redactHeaders`
+/ `redactBodyKeys`, take full control with `redactor`, or switch it off with
+`redact: false` if you're certain the traffic is harmless.
+
+**The collector is not reachable from your network by default.** It binds to
+`127.0.0.1`. Simulators and emulators reach loopback anyway, so this costs
+nothing; `--host 0.0.0.0` opts in for physical devices and prints a warning.
+
+**Reads require a per-session token.** It's minted at startup and delivered in
+the dashboard URL's fragment — fragments are never sent to a server, so it
+can't leak through a Referer header or a proxy log. `GET /api/session`,
+`POST /api/clear` and the dashboard WebSocket all require it. Treat the printed
+URL like a password.
+
+**WebSocket upgrades are Origin-checked.** Without this, any page you merely
+visited could open `ws://localhost:4040` and read the whole capture
+(Cross-Site WebSocket Hijacking) — the token alone wouldn't stop it, since the
+browser would happily connect from a foreign origin. Origins that don't match
+the server's own are refused.
+
+The SDK's own socket (`/ws/sdk`) is deliberately writable without a token: the
+token rotates every restart, and requiring it would mean editing `init()` each
+time. It is write-only — nothing can be read back through it — and the Origin
+check still bars browsers.
+
+Found something? Please report it privately via
+[GitHub Security Advisories](https://github.com/synccalm/rn-network-inspector/security/advisories/new)
+rather than a public issue.
 
 ## Contributing
 

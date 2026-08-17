@@ -32,7 +32,117 @@ var config = {
   maxBodyLength: 200000,
   logToConsole: false,
   captureConsole: true,
+  redact: true,
+  redactHeaders: [],
+  redactBodyKeys: [],
+  redactor: null,
 };
+
+/**
+ * Redaction defaults.
+ *
+ * A capture of a React Native app's traffic is, in practice, a capture of its
+ * credentials: the Authorization header on every authenticated call, session
+ * cookies, and whatever the user typed into a login form. Scrubbing happens
+ * here — in the app, before anything is sent — so the secrets never reach the
+ * collector, the dashboard, or an MCP client's context window.
+ *
+ * Names are matched loosely (case-insensitive, ignoring `-` and `_`) so
+ * `access_token`, `accessToken` and `Access-Token` all match one entry.
+ */
+var REDACTED = '[REDACTED by synccalm]';
+var MAX_REDACT_DEPTH = 12;
+
+var DEFAULT_REDACT_HEADERS = [
+  'authorization',
+  'proxyauthorization',
+  'cookie',
+  'setcookie',
+  'xapikey',
+  'apikey',
+  'xauthtoken',
+  'xaccesstoken',
+  'xsessiontoken',
+  'xcsrftoken',
+  'xxsrftoken',
+];
+
+var DEFAULT_REDACT_BODY_KEYS = [
+  'password',
+  'passwd',
+  'pwd',
+  'newpassword',
+  'oldpassword',
+  'token',
+  'accesstoken',
+  'refreshtoken',
+  'idtoken',
+  'authtoken',
+  'sessiontoken',
+  'secret',
+  'clientsecret',
+  'apikey',
+  'authorization',
+  'privatekey',
+  'ssn',
+  'socialsecuritynumber',
+  'creditcard',
+  'cardnumber',
+  'cvv',
+  'cvc',
+  'pin',
+  'otp',
+];
+
+function normalizeKey(key) {
+  return String(key).toLowerCase().replace(/[-_\s]/g, '');
+}
+
+function buildMatcher(defaults, extra) {
+  var set = {};
+  var i;
+  for (i = 0; i < defaults.length; i++) set[defaults[i]] = true;
+  if (Array.isArray(extra)) {
+    for (i = 0; i < extra.length; i++) set[normalizeKey(extra[i])] = true;
+  }
+  return set;
+}
+
+function redactHeadersObject(headers) {
+  if (!config.redact || !headers || typeof headers !== 'object') return headers;
+  var matcher = buildMatcher(DEFAULT_REDACT_HEADERS, config.redactHeaders);
+  var out = {};
+  for (var key in headers) {
+    if (!Object.prototype.hasOwnProperty.call(headers, key)) continue;
+    out[key] = matcher[normalizeKey(key)] ? REDACTED : headers[key];
+  }
+  return out;
+}
+
+function redactValue(value, matcher, depth) {
+  if (depth > MAX_REDACT_DEPTH || value === null || typeof value !== 'object') return value;
+
+  if (Array.isArray(value)) {
+    var arr = [];
+    for (var i = 0; i < value.length; i++) arr.push(redactValue(value[i], matcher, depth + 1));
+    return arr;
+  }
+
+  var out = {};
+  for (var key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+    out[key] = matcher[normalizeKey(key)] ? REDACTED : redactValue(value[key], matcher, depth + 1);
+  }
+  return out;
+}
+
+function redactBody(body) {
+  if (!config.redact) return body;
+  // Bodies that didn't parse as JSON stay strings; there's no structure to
+  // walk, so they're passed through rather than mangled by a regex.
+  if (!body || typeof body !== 'object') return body;
+  return redactValue(body, buildMatcher(DEFAULT_REDACT_BODY_KEYS, config.redactBodyKeys), 0);
+}
 
 function isDev() {
   // eslint-disable-next-line no-undef
@@ -182,20 +292,33 @@ function reportRequest(xhr) {
     responseHeaders = headersStringToObject(xhr.getAllResponseHeaders());
   } catch (e) {}
 
-  sendMessage('log', {
+  var entry = {
     method: (meta.method || 'GET').toUpperCase(),
     url: meta.url,
-    requestHeaders: meta.requestHeaders,
-    requestBody: tryParseJson(meta.requestBody),
+    requestHeaders: redactHeadersObject(meta.requestHeaders),
+    requestBody: redactBody(tryParseJson(meta.requestBody)),
     status: xhr.status || 0,
     statusText: xhr.statusText || '',
-    responseHeaders: responseHeaders,
-    responseBody: tryParseJson(responseBody),
+    responseHeaders: redactHeadersObject(responseHeaders),
+    responseBody: redactBody(tryParseJson(responseBody)),
     startTime: startTime,
     endTime: endTime,
     duration: endTime - startTime,
     error: xhr.status === 0 ? 'Network request failed' : null,
-  });
+  };
+
+  // Last word goes to the app: `redactor` can drop the entry entirely by
+  // returning a falsy value, or scrub anything the defaults missed.
+  if (typeof config.redactor === 'function') {
+    try {
+      entry = config.redactor(entry);
+    } catch (e) {
+      return; // a throwing redactor must not leak the unredacted entry
+    }
+    if (!entry) return;
+  }
+
+  sendMessage('log', entry);
 }
 
 function patchXHR() {

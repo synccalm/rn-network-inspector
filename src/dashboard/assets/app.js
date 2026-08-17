@@ -94,11 +94,41 @@ function matchesSearch(log) {
   return (log.url || '').toLowerCase().includes(state.search.toLowerCase());
 }
 
+// ------------------------------------------------------------------ token
+
+/**
+ * The session token arrives in the URL fragment, which browsers never send
+ * to a server — so it stays out of access logs and Referer headers. It's
+ * stashed in memory and stripped from the address bar so it isn't left
+ * sitting in history or shared by copying the URL after load.
+ */
+const sessionToken = (function readToken() {
+  const fromHash = new URLSearchParams(location.hash.replace(/^#/, '')).get('token');
+  if (fromHash) {
+    history.replaceState(null, '', location.pathname + location.search);
+    return fromHash;
+  }
+  return null;
+})();
+
+function showTokenError() {
+  el.connStatus.classList.remove('connected');
+  el.connStatus.classList.add('disconnected');
+  el.connStatusLabel.textContent = 'unauthorized — reopen the URL from your terminal';
+}
+
 // -------------------------------------------------------------- websocket
 
 function connectWS() {
+  if (!sessionToken) {
+    showTokenError();
+    return;
+  }
+
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${proto}//${location.host}/ws/dashboard`);
+  const ws = new WebSocket(
+    `${proto}//${location.host}/ws/dashboard?token=${encodeURIComponent(sessionToken)}`
+  );
 
   ws.onopen = () => {
     el.connStatus.classList.add('connected');
@@ -918,7 +948,10 @@ el.searchInput.addEventListener('input', (e) => {
 });
 
 el.clearBtn.addEventListener('click', () => {
-  fetch('/api/clear', { method: 'POST' }).catch(() => {});
+  fetch('/api/clear', {
+    method: 'POST',
+    headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {},
+  }).catch(() => {});
 });
 
 el.primaryNav.addEventListener('click', (e) => {
